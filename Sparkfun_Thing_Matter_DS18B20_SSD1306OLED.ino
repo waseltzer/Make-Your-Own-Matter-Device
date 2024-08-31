@@ -33,6 +33,7 @@
 
 #include <Arduino.h>
 #include <U8x8lib.h>  // SSD1306 OLED
+#include <math.h>
 
 MatterTemperature matter_temp_sensor;
 
@@ -93,7 +94,8 @@ void setup() {
   u8x8.drawString(0, 0, "online");
 }
 
-char buf[50];
+char buf[50];  //character array to send to the OLED display
+float prevtempF = 0;
 
 void loop() {
   // call sensors.requestTemperatures() to issue a global temperature
@@ -103,28 +105,33 @@ void loop() {
   //Serial.println("DONE");
   // We use the function ByIndex, and as an example get the temperature from the first sensor only.
   float tempC = sensors.getTempCByIndex(0);
-  float tempF = (tempC * 1.8) + 32;
-  float prevtempF = tempF;
-
-  // Check if reading was successful
-  if (tempC != DEVICE_DISCONNECTED_C) {
-    //   Serial.print("Temperature: ");
-    //   Serial.println(tempC);
-  } else {
-    Serial.println("Error: Could not read temperature data");
-  }
-
   matter_temp_sensor.set_measured_value_celsius(tempC);
   Serial.printf("Temperature: %.02f C\n", tempC);
 
-  if (prevtempF != tempF) {  //update the display if the temperature has changed
-    // Display the temperature on the OLED
-    u8x8.setFont(u8x8_font_inr33_3x6_r);
+  // Check if reading was successful
+  if (tempC != DEVICE_DISCONNECTED_C) {
+    float tempF = round((tempC * 1.8) + 32);
+
+    if (prevtempF != tempF) {  //update the display if the temperature has changed
+      // Display the temperature on the OLED
+      u8x8.setFont(u8x8_font_inr33_3x6_r);
+      u8x8.clear();
+      dtostrf(tempF, 3, 0, buf);  // convert the float to a 3 digit integer as a character array
+      u8x8.drawString(1, 1, buf);
+      u8x8.drawString(28, 1, "F");
+      prevtempF = tempF;
+    }
+  } else {
+    Serial.println("Error: Could not read temperature data");
     u8x8.clear();
-    dtostrf(tempF, 3, 0, buf);
-    u8x8.drawString(1, 1, buf);
-    u8x8.drawString(28, 1, "F");
+    u8x8.setFont(u8x8_font_chroma48medium8_r);
+    u8x8.drawString(0, 0, "temperature");
+    u8x8.drawString(0, 1, "sensor");
+    u8x8.drawString(0, 2, "failure");
+    prevtempF = 0;
   }
+
+
 
   delay(2000);
 }
